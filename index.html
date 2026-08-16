@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reminder Liquid Glass</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1e2f">
+    <style>
+        :root {
+            --ui-bg: #1e1e2f;
+            --glass-bg: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --blur-intensity: 25px;
+            --text-color: #f0f0f5;
+            --primary-color: #b4c6fc;
+            --med-color: #fef9c3;
+            --high-color: #ffccd5;
+        }
+
+        .solid-mode {
+            --glass-bg: #2d2d44;
+            --blur-intensity: 0px;
+            --glass-border: #444466;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--ui-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-intensity));
+            -webkit-backdrop-filter: blur(var(--blur-intensity));
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        h2, h3 { margin-top: 0; font-weight: 600; }
+
+        input, select, button {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-color);
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background: var(--primary-color);
+            color: #1e1e2f;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+
+        .btn-danger {
+            background: #ffb3ba;
+            color: #2d3436;
+        }
+
+        .reminder-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        #banner {
+            position: fixed;
+            top: 20px;
+            left: 5%;
+            width: 90%;
+            background: var(--med-color);
+            color: #2d3436;
+            padding: 20px;
+            border-radius: 16px;
+            display: none;
+            text-align: center;
+            z-index: 9998;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-weight: bold;
+        }
+
+        #full-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--high-color);
+            color: #2d3436;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .days-selector {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .day-checkbox {
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h3>Personalización y Ajustes</h3>
+        <label><input type="checkbox" id="themeToggle" onchange="toggleTheme()"> Modo Cristal Líquido (iOS)</label>
+        <div style="margin-top: 10px;">
+            <label>Color UI Principal:</label>
+            <input type="color" id="primaryColorInput" value="#b4c6fc" onchange="updateColors()">
+            <label>Color Alerta Media (Banner):</label>
+            <input type="color" id="medColorInput" value="#fef9c3" onchange="updateColors()">
+            <label>Color Alerta Alta (Full):</label>
+            <input type="color" id="highColorInput" value="#ffccd5" onchange="updateColors()">
+        </div>
+        <div style="margin-top: 10px;">
+            <label>Apps en Lista Negra (separadas por coma):</label>
+            <input type="text" id="blacklistedApps" placeholder="com.company.game, com.app.other">
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 id="formTitle">Nuevo Recordatorio</h2>
+        <input type="hidden" id="editId">
+        <input type="text" id="rTitle" placeholder="Título del recordatorio">
+        <input type="time" id="rTime">
+        <select id="rPriority">
+            <option value="low">Prioridad Baja (Notificación)</option>
+            <option value="med">Prioridad Media (Banner)</option>
+            <option value="high">Prioridad Alta (Pantalla Completa)</option>
+        </select>
+        
+        <label style="font-size:13px; margin-top:8px; display:block;">Días de la semana:</label>
+        <div class="days-selector">
+            <label class="day-checkbox"><input type="checkbox" value="1" class="day-cb"> L</label>
+            <label class="day-checkbox"><input type="checkbox" value="2" class="day-cb"> M</label>
+            <label class="day-checkbox"><input type="checkbox" value="3" class="day-cb"> Mi</label>
+            <label class="day-checkbox"><input type="checkbox" value="4" class="day-cb"> J</label>
+            <label class="day-checkbox"><input type="checkbox" value="5" class="day-cb"> V</label>
+            <label class="day-checkbox"><input type="checkbox" value="6" class="day-cb"> S</label>
+            <label class="day-checkbox"><input type="checkbox" value="0" class="day-cb"> D</label>
+        </div>
+
+        <button onclick="saveReminder()" id="saveBtn">Guardar Recordatorio</button>
+    </div>
+
+    <div class="card">
+        <h3>Alarmas Programadas</h3>
+        <div id="reminderList"></div>
+    </div>
+</div>
+
+<div id="banner"></div>
+<div id="full-alert">
+    <h1 id="fullTitle" style="font-size: 28px; margin-bottom: 20px;"></h1>
+    <button onclick="dismissFull()" style="background: #2d3436; color: #fff; width: auto; padding: 12px 30px;">Entendido</button>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.error("Error SW:", err));
+    }
+
+    let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+    let settings = JSON.parse(localStorage.getItem('settings') || JSON.stringify({
+        liquidMode: true,
+        primary: '#b4c6fc',
+        med: '#fef9c3',
+        high: '#ffccd5',
+        blacklist: ''
+    }));
+
+    function initSettings() {
+        document.getElementById('themeToggle').checked = settings.liquidMode;
+        document.getElementById('primaryColorInput').value = settings.primary;
+        document.getElementById('medColorInput').value = settings.med;
+        document.getElementById('highColorInput').value = settings.high;
+        document.getElementById('blacklistedApps').value = settings.blacklist;
+        applyTheme();
+    }
+
+    function applyTheme() {
+        const root = document.documentElement;
+        if (!settings.liquidMode) {
+            document.body.classList.add('solid-mode');
+        } else {
+            document.body.classList.remove('solid-mode');
+        }
+        root.style.setProperty('--primary-color', settings.primary);
+        root.style.setProperty('--med-color', settings.med);
+        root.style.setProperty('--high-color', settings.high);
+    }
+
+    function toggleTheme() {
+        settings.liquidMode = document.getElementById('themeToggle').checked;
+        saveSettings();
+        applyTheme();
+    }
+
+    function updateColors() {
+        settings.primary = document.getElementById('primaryColorInput').value;
+        settings.med = document.getElementById('medColorInput').value;
+        settings.high = document.getElementById('highColorInput').value;
+        saveSettings();
+        applyTheme();
+    }
+
+    function saveSettings() {
+        settings.blacklist = document.getElementById('blacklistedApps').value;
+        localStorage.setItem('settings', JSON.stringify(settings));
+    }
+
+    function saveReminder() {
+        const id = document.getElementById('editId').value;
+        const title = document.getElementById('rTitle').value;
+        const time = document.getElementById('rTime').value;
+        const priority = document.getElementById('rPriority').value;
+        const checkboxes = document.querySelectorAll('.day-cb:checked');
+        const days = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        if (!title || !time || days.length === 0) {
+            alert("Por favor complete los campos y seleccione al menos un día.");
+            return;
+        }
+
+        if (id) {
+            reminders = reminders.map(r => r.id == id ? { id: Number(id), title, time, priority, days } : r);
+            document.getElementById('editId').value = '';
+            document.getElementById('formTitle').innerText = "Nuevo Recordatorio";
+            document.getElementById('saveBtn').innerText = "Guardar Recordatorio";
+        } else {
+            reminders.push({ id: Date.now(), title, time, priority, days });
+        }
+
+        localStorage.setItem('reminders', JSON.stringify(reminders));
+        clearForm();
+        renderReminders();
+    }
+
+    function clearForm() {
+        document.getElementById('rTitle').value = '';
+        document.getElementById('rTime').value = '';
+        document.querySelectorAll('.day-cb').forEach(cb => cb.checked = false);
+    }
+
+    function editReminder(id) {
+        const r = reminders.find(item => item.id == id);
+        if (!r) return;
+        document.getElementById('editId').value = r.id;
+        document.getElementById('rTitle').value = r.title;
+        document.getElementById('rTime').value = r.time;
+        document.getElementById('rPriority').value = r.priority;
+        document.querySelectorAll('.day-cb').forEach(cb => {
+            cb.checked = r.days.includes(parseInt(cb.value));
+        });
+        document.getElementById('formTitle').innerText = "Editar Recordatorio";
+        document.getElementById('saveBtn').innerText = "Actualizar Recordatorio";
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function deleteReminder(id) {
+        reminders = reminders.filter(r => r.id != id);
+        localStorage.setItem('reminders', JSON.stringify(reminders));
+        renderReminders();
+    }
+
+    function renderReminders() {
+        const list = document.getElementById('reminderList');
+        if (reminders.length === 0) {
+            list.innerHTML = "<p style='text-align:center; opacity:0.6;'>No hay alarmas programadas.</p>";
+            return;
+        }
+        list.innerHTML = reminders.map(r => `
+            <div class="reminder-item">
+                <div>
+                    <b>${r.title}</b><br>
+                    <span style="font-size:12px; opacity:0.8;">Hora: ${r.time} | Pri: ${r.priority}</span>
+                </div>
+                <div>
+                    <button onclick="editReminder(${r.id})" style="padding:6px 10px; font-size:12px; width:auto; margin-right:4px;">Editar</button>
+                    <button onclick="deleteReminder(${r.id})" class="btn-danger" style="padding:6px 10px; font-size:12px; width:auto;">X</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    setInterval(() => {
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = `${currentHours}:${currentMinutes}`;
+        const currentDay = now.getDay();
+
+        reminders.forEach(r => {
+            if (r.time === currentTime && r.days.includes(currentDay)) {
+                triggerAlert(r);
+            }
+        });
+    }, 30000);
+
+    function triggerAlert(reminder) {
+        let priority = reminder.priority;
+        let currentApp = "";
+        
+        try {
+            if (window.AndroidBridge && typeof window.AndroidBridge.getCurrentApp === 'function') {
+                currentApp = window.AndroidBridge.getCurrentApp();
+            }
+        } catch (e) {}
+
+        const blacklist = settings.blacklist.split(',').map(s => s.trim()).filter(Boolean);
+        if (blacklist.includes(currentApp) && (priority === 'med' || priority === 'high')) {
+            priority = 'low';
+        }
+
+        if (priority === 'low') {
+            if (Notification.permission === 'granted') {
+                new Notification(reminder.title, { body: "Recordatorio activo" });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        } else if (priority === 'med') {
+            const banner = document.getElementById('banner');
+            banner.innerText = reminder.title;
+            banner.style.display = 'block';
+            setTimeout(() => banner.style.display = 'none', 6000);
+        } else if (priority === 'high') {
+            document.getElementById('fullTitle').innerText = reminder.title;
+            document.getElementById('full-alert').style.display = 'flex';
+        }
+    }
+
+    function dismissFull() {
+        document.getElementById('full-alert').style.display = 'none';
+    }
+
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    initSettings();
+    renderReminders();
+</script>
+</body>
+</html>
