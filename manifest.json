@@ -10,11 +10,11 @@
   "theme_color": "#1e1e2f",
   "orientation": "any",
   "dir": "ltr",
-  "icons": [
-    {
-      "src": "https://dquintanasanchez09-cmyk.github.io/Flopi/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+      "icons": [
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
